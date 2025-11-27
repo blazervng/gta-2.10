@@ -1684,6 +1684,16 @@ size_t OS_FileRead_hook(OSFile a1, void *buffer, size_t numBytes)
     return OS_FileRead(a1, buffer, numBytes);
 }
 
+char g_iLastBlock[123];
+
+int *(*LoadFullTexture)(TextureDatabaseRuntime *thiz, unsigned int a2);
+int *LoadFullTexture_hook(TextureDatabaseRuntime *thiz, unsigned int a2)
+{
+	strcpy(g_iLastBlock, thiz->name);
+
+    return LoadFullTexture(thiz, a2);
+}
+
 void (*RLEDecompress)(uint8_t* pDest, size_t uiDestSize, uint8_t const* pSrc, size_t uiSegSize, uint32_t uiEscape);
 void RLEDecompress_hook(uint8_t* pDest, size_t uiDestSize, const uint8_t* pSrc, size_t uiSegSize, uint32_t uiEscape) {
 
@@ -1762,50 +1772,6 @@ void CGame_Process_hook()
             pTextDrawPool->SnapshotProcess();
         }
     }
-}
-
-void (*MobileMenu_InitForPause)(uintptr_t* thiz);
-void MobileMenu_InitForPause_hook(uintptr_t* thiz)
-{
-	//g_pJavaWrapper->ShowPause();
-    return MobileMenu_InitForPause(thiz);
-}
-
-void (*MobileMenu_AddAllItems)(uintptr_t* thiz);
-void MobileMenu_AddAllItems_hook(uintptr_t* thiz)// Инициализация кнопок меню
-{
-
-    FLog("MobileMenu_AddAllItems(thiz)");
-    ///return MobileMenu_AddAllItems(thiz);
-    return;
-}
-void (*MobileMenu_DrawBack)(uintptr_t* thiz, bool wrap);
-void MobileMenu_DrawBack_hook(uintptr_t* thiz, bool wrap) // Кнопка бэк на радаре (меню)
-{
-    FLog("MobileMenu_DrawBack(thiz, wrap)");
-    return;
-    return MobileMenu_DrawBack(thiz, wrap);
-}
-
-void (*MobileMenu_Update)(uintptr_t* thiz);
-void MobileMenu_Update_hook(uintptr_t* thiz) // Обновление (делаеться само по дефолту в гта са)
-{
-    if(kuziaclose) {
-        CHook::CallFunction<void>("_ZN14MainMenuScreen8OnResumeEv");
-        kuziaclose = false;
-        kuziak = false;
-    }
-    FLog("MobileMenu_Update(thiz)");
-    return MobileMenu_Update(thiz);
-}
-
-float (*CDraw__SetFOV)(float thiz, float a2);
-float CDraw__SetFOV_hook(float thiz, float a2)
-{
-    float tmp = (float)((float)((float)(*(float *)&*(float *)(g_libGTASA + (VER_x32 ? 0x00A26A90 : 0xCC7F00)) - 1.3333) * 11.0) / 0.44444) + thiz;
-    if(tmp > 100) tmp = 100.0;
-    *(float *)(g_libGTASA + (VER_x32 ? 0x006B1CB8 : 0x88E6BC)) = tmp;
-    return thiz;
 }
 
 void(*CStreaming__Init2)();
@@ -1901,7 +1867,7 @@ void InjectHooks()
     CHook::Write(g_libGTASA+(VER_x32 ? 0xA45790:0xCE8538), &COcclusion::NumOccludersOnMap);
 }
 
-void InstallUrezHooks()
+void InstallCutHooks()
 {
 // pvr
     CHook::UnFuck(g_libGTASA + (VER_x32 ? 0x1E87A0 : 0x714003 ));
@@ -1968,7 +1934,8 @@ void InstallSpecialHooks()
 {
     InjectHooks();
 
-    //InstallUrezHooks(); //If u use CRMP cache, u need to use this
+	// change etc/unc/pvr -> dxt
+    //InstallCutHooks(); //If u use CRMP cache, u need to use this
 
     CHook::Redirect("_ZN5CGame20InitialiseRenderWareEv", &CGame::InitialiseRenderWare);
     CHook::InstallPLT(g_libGTASA + (VER_x32 ? 0x6785FC : 0x84EC20), &StartGameScreen__OnNewGameCheck_hook, &StartGameScreen__OnNewGameCheck);
@@ -1984,7 +1951,8 @@ void InstallSpecialHooks()
 
     CHook::RET("_ZN4CPed31RemoveWeaponWhenEnteringVehicleEi"); // CPed::RemoveWeaponWhenEnteringVehicle
 
-//    CHook::InstallPLT(g_libGTASA + (VER_x32 ? 0x6701D4 : 0x840708), &RLEDecompress_hook, &RLEDecompress); // Maybe comment fix bug with widgets, because hook was written by ChatGPT (not mine code)
+//    CHook::InstallPLT(g_libGTASA + (VER_x32 ? 0x6701D4 : 0x840708), &RLEDecompress_hook, &RLEDecompress); // comment fix bug with widgets, cause hook was written by ChatGPT (not mine code)
+	CHook::InlineHook("_ZN22TextureDatabaseRuntime15LoadFullTextureEj", &LoadFullTexture_hook, &LoadFullTexture);
 
     CHook::InlineHook("_Z11OS_FileReadPvS_i", &OS_FileRead_hook, &OS_FileRead);
 
@@ -2001,11 +1969,7 @@ void InstallHooks()
     CHook::Redirect("_Z13Render2dStuffv", &Render2dStuff);
     CHook::Redirect("_Z13RenderEffectsv", &RenderEffects);
     CHook::InlineHook("_Z14AND_TouchEventiiii", &AND_TouchEvent_hook, &AND_TouchEvent);
-
-    CHook::InlineHook("_ZN14MainMenuScreen11AddAllItemsEv", &MobileMenu_AddAllItems_hook, &MobileMenu_AddAllItems);//edgar pause
-    CHook::InlineHook("_ZN10MenuScreen8DrawBackEb", &MobileMenu_DrawBack_hook, &MobileMenu_DrawBack);//edgar pause//no
-    CHook::InlineHook("_ZN10MobileMenu6UpdateEv", &MobileMenu_Update_hook, &MobileMenu_Update);//edgar pause
-
+	
     CHook::Redirect("_ZN11CHudColours12GetIntColourEh", &CHudColours__GetIntColour); // dangerous
     CHook::Redirect("_ZN6CRadar19GetRadarTraceColourEjhh", &CRadar__GetRadarTraceColor); // dangerous
     CHook::InlineHook("_ZN6CRadar12SetCoordBlipE9eBlipType7CVectorj12eBlipDisplayPc", &CRadar__SetCoordBlip_hook, &CRadar__SetCoordBlip);
@@ -2014,8 +1978,6 @@ void InstallHooks()
     CHook::Redirect("_Z10GetTexturePKc", &CUtil::GetTexture);
 
     CHook::InlineHook("_ZN14MainMenuScreen6OnExitEv", &MainMenuScreen__OnExit_hook, &MainMenuScreen__OnExit);
-
-    CHook::InlineHook("_ZN10MobileMenu12InitForPauseEv", &MobileMenu_InitForPause_hook, &MobileMenu_InitForPause); //pause
 
     CHook::InlineHook("_ZN17CTaskSimpleUseGun17RemoveStanceAnimsEP4CPedf", &CTaskSimpleUseGun__RemoveStanceAnims_hook, &CTaskSimpleUseGun__RemoveStanceAnims);
 
@@ -2076,7 +2038,6 @@ void InstallHooks()
     // retexture
     CHook::InlineHook("_ZN7CEntity6RenderEv", &CEntity_Render_hook, &CEntity_Render);
 
-    //CHook::InlineHook("_ZN26CAEGlobalWeaponAudioEntity21ServiceAmbientGunFireEv", &TaskEnterVehicleHook, &TaskEnterVehicle);
 #if VER_x32
     CHook::UnFuck(g_libGTASA + 0x4DD9E8);
     *(float*)(g_libGTASA + 0x4DD9E8) = 0.015f;
@@ -2085,21 +2046,6 @@ void InstallHooks()
     CHook::Write(g_libGTASA + 0x5DF794, 0xBD48D521);
 #endif
 
-    CHook::InlineHook("_ZN5CDraw6SetFOVEfb", &CDraw__SetFOV_hook, &CDraw__SetFOV);
-
     CHook::InlineHook("_ZN10CStreaming5Init2Ev", &CStreaming__Init2_hook, &CStreaming__Init2);
-
-/*#if VER_x32
-    CHook::InstallPLT( g_libGTASA + 0x66F3D4, &mpg123_param_hook, &mpg123_param);
-#else
-    CHook::Write(g_libGTASA + 0x339134, 0x52846C02);
-    CHook::Write(g_libGTASA + 0x339404, 0x52846C02);
-#endif*/
-
-
-    //m_pSkyObject = CreateObjectScaled(18659, 2.92f);
-    //SetTexturkaka("daily_sky_1");
-
-    HookCPad();
+HookCPad();
 }
-//static CObject* CreateObjectScaled(int iModel, float fScale);

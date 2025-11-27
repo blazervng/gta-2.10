@@ -1,4 +1,4 @@
-# ᐳ SA:MP Mobile Client 2.10 (x64) for GTA: San Andreas
+# SA:MP Mobile Client 2.10 (x64) for GTA: San Andreas
 
 # ᐳ Description
 > * Arch: `arm64-v8a`, `armeabi-v7a`
@@ -18,8 +18,8 @@
 > * Compatibility with SA:MP 0.3.7
 
 # ᐳ Credit's
-> - **x1y2z** — author 
-> - [**kuzia15**](https://github.com/kuzia15) — OpenGL, small improvements
+> - **x1y2z** — main author of client 
+> - [**kuzia15**](https://github.com/kuzia15) — OpenGL, WaterShader, small improvements
 > - [**psychobye**](https://github.com/psychobye) — CSkyBox, small improvements
 > - [**throw-dev**](https://github.com/throw-dev) — bug fixes, hud, rpc, graphics, optimization
 
